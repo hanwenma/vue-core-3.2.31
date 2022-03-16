@@ -275,12 +275,12 @@ export const queuePostRenderEffect = __FEATURE_SUSPENSE__
   : queuePostFlushCb
 
 /**
- * The createRenderer function accepts two generic arguments:
- * HostNode and HostElement, corresponding to Node and Element types in the
- * host environment. For example, for runtime-dom, HostNode would be the DOM
- * `Node` interface and HostElement would be the DOM `Element` interface.
+ * createRenderer 函数接受两个通用参数：
+ * HostNode 和 HostElement，对应于宿主环境，例如：
+ *  对于运行时 dom，HostNode 就是 dom
+ *  `Node` 接口 和 HostElement 将是 DOM `Element` 接口
  *
- * Custom renderers can pass in the platform specific types like this:
+ * 自定义渲染器可以像这样传入特定于平台的类型:
  *
  * ``` js
  * const { render, createApp } = createRenderer<Node, Element>({
@@ -317,7 +317,7 @@ function baseCreateRenderer(
   createHydrationFns: typeof createHydrationFunctions
 ): HydrationRenderer
 
-// implementation
+// implementation：返回渲染函数和 createApp
 function baseCreateRenderer(
   options: RendererOptions,
   createHydrationFns?: typeof createHydrationFunctions
@@ -327,6 +327,7 @@ function baseCreateRenderer(
     initFeatureFlags()
   }
 
+  // 获取当前环境：PC 、Node、WebWorker
   const target = getGlobalThis()
   target.__VUE__ = true
   if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
@@ -352,8 +353,8 @@ function baseCreateRenderer(
   // Note: functions inside this closure should use `const xxx = () => {}`
   // style in order to prevent being inlined by minifiers.
   const patch: PatchFn = (
-    n1,
-    n2,
+    n1,// 旧 vnode
+    n2,// 新 vnode
     container,
     anchor = null,
     parentComponent = null,
@@ -362,6 +363,7 @@ function baseCreateRenderer(
     slotScopeIds = null,
     optimized = __DEV__ && isHmrUpdating ? false : !!n2.dynamicChildren
   ) => {
+    // 新旧 vnode 相等，不做任何操作
     if (n1 === n2) {
       return
     }
@@ -369,6 +371,7 @@ function baseCreateRenderer(
     // patching & not same type, unmount old tree
     if (n1 && !isSameVNodeType(n1, n2)) {
       anchor = getNextHostNode(n1)
+      // 新旧 vndoe 类型不一致，卸载旧 dom 树
       unmount(n1, parentComponent, parentSuspense, true)
       n1 = null
     }
@@ -2301,14 +2304,22 @@ function baseCreateRenderer(
   }
 
   const render: RootRenderFunction = (vnode, container, isSVG) => {
+    // 新 vnode 不存在
     if (vnode == null) {
+      // 旧 _vnode 存在，意味着是卸载
       if (container._vnode) {
         unmount(container._vnode, null, null, true)
       }
     } else {
+      // 新 vnode 存在，执行 patch
+      debugger
       patch(container._vnode || null, vnode, container, null, null, null, isSVG)
     }
+
+    // 首次需要执行活动队列中的任务
     flushPostFlushCbs()
+
+    // patch 结束，将旧 vnode 替换为新 vnode
     container._vnode = vnode
   }
 
@@ -2333,6 +2344,7 @@ function baseCreateRenderer(
     )
   }
 
+  // 返回渲染函数和 createApp
   return {
     render,
     hydrate,

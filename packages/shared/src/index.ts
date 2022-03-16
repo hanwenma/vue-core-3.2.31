@@ -156,6 +156,12 @@ export const toNumber = (val: any): any => {
 }
 
 let _globalThis: any
+/*
+  globalThis —— vue
+  self —— web worker
+  window —— PC
+  global —— node
+*/ 
 export const getGlobalThis = (): any => {
   return (
     _globalThis ||

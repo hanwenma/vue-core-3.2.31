@@ -145,6 +145,7 @@ export type Plugin =
       install: PluginInstallFunction
     }
 
+// 返回根组件上下文对象 context 
 export function createAppContext(): AppContext {
   return {
     app: null as any,
@@ -174,6 +175,7 @@ export type CreateAppFunction<HostElement> = (
 
 let uid = 0
 
+// 这里才是真正返回 createApp 函数
 export function createAppAPI<HostElement>(
   render: RootRenderFunction,
   hydrate?: RootHydrateFunction
@@ -184,11 +186,14 @@ export function createAppAPI<HostElement>(
       rootProps = null
     }
 
+    // 返回根组件上下文对象
     const context = createAppContext()
+    // 通过 Set 来缓存已安装的插件
     const installedPlugins = new Set()
 
     let isMounted = false
 
+    // 定义根组件配置项
     const app: App = (context.app = {
       _uid: uid++,
       _component: rootComponent as ConcreteComponent,
@@ -211,14 +216,24 @@ export function createAppAPI<HostElement>(
         }
       },
 
+      // 注册插件
       use(plugin: Plugin, ...options: any[]) {
         if (installedPlugins.has(plugin)) {
           __DEV__ && warn(`Plugin has already been applied to target app.`)
         } else if (plugin && isFunction(plugin.install)) {
+          // plugin.install 是函数 
+
+          // 保存 plugin 插件，避免重复注册
           installedPlugins.add(plugin)
+          // 调用  plugin.install 函数
           plugin.install(app, ...options)
+
         } else if (isFunction(plugin)) {
+          // plugin.install 不存在 且 plugin 是函数
+
+          // 保存 plugin 插件，避免重复注册
           installedPlugins.add(plugin)
+          // 调用 plugin 函数
           plugin(app, ...options)
         } else if (__DEV__) {
           warn(
@@ -229,6 +244,7 @@ export function createAppAPI<HostElement>(
         return app
       },
 
+      // 混入：只针对 optionsApi 有效
       mixin(mixin: ComponentOptions) {
         if (__FEATURE_OPTIONS_API__) {
           if (!context.mixins.includes(mixin)) {
@@ -245,20 +261,27 @@ export function createAppAPI<HostElement>(
         return app
       },
 
+      // 注册或获取组件
       component(name: string, component?: Component): any {
         if (__DEV__) {
           validateComponentName(name, context.config)
         }
+
+        // 只传递组件名，表示获取组件
         if (!component) {
           return context.components[name]
         }
+
         if (__DEV__ && context.components[name]) {
           warn(`Component "${name}" has already been registered in target app.`)
         }
+
+        // 注册组件
         context.components[name] = component
         return app
       },
 
+      // 注册指令
       directive(name: string, directive?: Directive) {
         if (__DEV__) {
           validateDirectiveName(name)
@@ -274,21 +297,24 @@ export function createAppAPI<HostElement>(
         return app
       },
 
+      // 挂载
       mount(
         rootContainer: HostElement,
         isHydrate?: boolean,
         isSVG?: boolean
       ): any {
+        // 根组件还未挂载
         if (!isMounted) {
+          // 获取根组件的 VNode
           const vnode = createVNode(
             rootComponent as ConcreteComponent,
             rootProps
           )
-          // store app context on the root VNode.
-          // this will be set on the root instance on initial mount.
+
+          // 在根 VNode 上存储应用程序上下文，只在初始挂载时被设置到的根实例上
           vnode.appContext = context
 
-          // HMR root reload
+          // HMR root reload：热更新就是重新执行 render 方法
           if (__DEV__) {
             context.reload = () => {
               render(cloneVNode(vnode), rootContainer, isSVG)
@@ -298,10 +324,15 @@ export function createAppAPI<HostElement>(
           if (isHydrate && hydrate) {
             hydrate(vnode as VNode<Node, Element>, rootContainer as any)
           } else {
+            // 通过 render 进行渲染，即初次的 patch
             render(vnode, rootContainer, isSVG)
           }
+
           isMounted = true
+          // 将根组件的内容进行保存
+          debugger
           app._container = rootContainer
+
           // for devtools and telemetry
           ;(rootContainer as any).__vue_app__ = app
 
@@ -312,6 +343,7 @@ export function createAppAPI<HostElement>(
 
           return getExposeProxy(vnode.component!) || vnode.component!.proxy
         } else if (__DEV__) {
+          // 重复挂载时的提示，如: app.mount(xx).mount(xx)
           warn(
             `App has already been mounted.\n` +
               `If you want to remount the same app, move your app creation logic ` +
@@ -321,6 +353,7 @@ export function createAppAPI<HostElement>(
         }
       },
 
+      // 卸载
       unmount() {
         if (isMounted) {
           render(null, app._container)
@@ -353,6 +386,7 @@ export function createAppAPI<HostElement>(
       installAppCompatProperties(app, context, render)
     }
 
+    // 返回定义的根组件配置对象
     return app
   }
 }

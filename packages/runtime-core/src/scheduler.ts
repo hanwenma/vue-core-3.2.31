@@ -182,36 +182,49 @@ export function flushPreFlushCbs(
 }
 
 export function flushPostFlushCbs(seen?: CountMap) {
+  // 队列中存在等待执行的任务
   if (pendingPostFlushCbs.length) {
+    // 使用 Set 对队列进行去重
     const deduped = [...new Set(pendingPostFlushCbs)]
+    // 清空等待执行队列中的任务
     pendingPostFlushCbs.length = 0
 
     // #1947 already has active queue, nested flushPostFlushCbs call
+    // 如果活动队列已存在，直接向其加入等待执行的任务
     if (activePostFlushCbs) {
       activePostFlushCbs.push(...deduped)
       return
     }
 
+    // 如果活动队列不存在，直接将等待执行队列中的任务赋值给活动队列
     activePostFlushCbs = deduped
     if (__DEV__) {
       seen = seen || new Map()
     }
 
+    // 对活动队列中的任务根据 id 进行排序
     activePostFlushCbs.sort((a, b) => getId(a) - getId(b))
 
+    // 通过循环执行活动队列中的任务
     for (
       postFlushIndex = 0;
       postFlushIndex < activePostFlushCbs.length;
       postFlushIndex++
     ) {
+
+      // 检查当前回调任务是已超过最大递归更新的限制，如果超过限制，直接跳过本次执行
       if (
         __DEV__ &&
         checkRecursiveUpdates(seen!, activePostFlushCbs[postFlushIndex])
       ) {
         continue
       }
+
+      // 执行对应任务
       activePostFlushCbs[postFlushIndex]()
     }
+
+    // 将活动队列中的回调任务清空
     activePostFlushCbs = null
     postFlushIndex = 0
   }

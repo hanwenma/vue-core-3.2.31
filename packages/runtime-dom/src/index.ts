@@ -39,6 +39,7 @@ let renderer: Renderer<Element | ShadowRoot> | HydrationRenderer
 
 let enabledHydration = false
 
+// 通过 ensureRenderer 创建并返回渲染器
 function ensureRenderer() {
   return (
     renderer ||
@@ -64,6 +65,8 @@ export const hydrate = ((...args) => {
 }) as RootHydrateFunction
 
 export const createApp = ((...args) => {
+  // 通过 ensureRenderer 返回渲染器
+  // 执行渲染器中的 createApp 方法得到 app 实例
   const app = ensureRenderer().createApp(...args)
 
   if (__DEV__) {
@@ -71,8 +74,12 @@ export const createApp = ((...args) => {
     injectCompilerOptionsCheck(app)
   }
 
+  // 保存原来 app.mount 方法
   const { mount } = app
+ 
+  // 重写 app.mount 方法，目的是为了正式挂载前后，进行一些处理
   app.mount = (containerOrSelector: Element | ShadowRoot | string): any => {
+    // 获取 Element 类型的 container
     const container = normalizeContainer(containerOrSelector)
     if (!container) return
 
@@ -180,6 +187,7 @@ function injectCompilerOptionsCheck(app: App) {
 function normalizeContainer(
   container: Element | ShadowRoot | string
 ): Element | null {
+  // container 为字符串，默认为选择器 
   if (isString(container)) {
     const res = document.querySelector(container)
     if (__DEV__ && !res) {
@@ -189,6 +197,8 @@ function normalizeContainer(
     }
     return res
   }
+
+  // container 不能为 {mode: "closed"} 的 shadowDom
   if (
     __DEV__ &&
     window.ShadowRoot &&
@@ -199,6 +209,8 @@ function normalizeContainer(
       `mounting on a ShadowRoot with \`{mode: "closed"}\` may lead to unpredictable bugs`
     )
   }
+
+  // 走到到这，意味着 container 是一个 Element 元素
   return container as any
 }
 
